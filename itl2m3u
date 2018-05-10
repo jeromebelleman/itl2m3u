@@ -1,0 +1,71 @@
+#! /usr/bin/env python
+
+'''
+Convert an iTunes playlist into a proper one
+'''
+
+import sys
+import argparse
+import re
+
+START, PLAYLISTS = range(2)
+
+KEYRE = re.compile(r'<key>(\d+)</key>')
+LOCRE = re.compile(r'<key>Location</key><string>([^<]+)</string>')
+PLSRE = re.compile(r'<key>Name</key><string>([^<]+)</string>')
+TRKRE = re.compile(r'<key>Track ID</key><integer>(\d+)</integer>')
+
+def main():
+    '''
+    Convert an iTunes playlist into a proper one
+    '''
+
+    # Parse arguments
+    parser = argparse.ArgumentParser(
+        description="Convert an iTunes playlist into a proper one.")
+    parser.add_argument("xml")
+    parser.add_argument("outdir")
+    args = parser.parse_args()
+
+    # Parse XML
+    state = START
+    tracks = {}
+    playlists = {}
+    with open(args.xml) as fhl:
+        for line in fhl:
+            if state == START:
+                match = KEYRE.search(line)
+                if match:
+                    key = match.group(1)
+                    continue
+
+                match = LOCRE.search(line)
+                if match:
+                    loc = match.group(1)
+                    tracks[key] = loc
+                    continue
+
+                if '<key>Playlists</key>' in line:
+                    state = PLAYLISTS
+                    continue
+            elif state == PLAYLISTS:
+                match = PLSRE.search(line)
+                if match:
+                    pls = match.group(1)
+                    playlists[pls] = []
+                    continue
+
+                match = TRKRE.search(line)
+                if match:
+                    playlists[pls].append(tracks[match.group(1)])
+                    continue
+
+    # Write M3Us
+    for playlist in playlists:
+        if playlists[playlist]:
+            with open('%s/%s.m3u' % (args.outdir, playlist), 'w') as fhl:
+                for track in playlists[playlist]:
+                    print >> fhl, track
+
+if __name__ == '__main__':
+    sys.exit(main())
