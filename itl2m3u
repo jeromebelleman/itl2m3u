@@ -7,6 +7,7 @@ Convert an iTunes playlist into a proper one
 import sys
 import argparse
 import re
+import urllib
 
 START, PLAYLISTS = range(2)
 
@@ -57,7 +58,8 @@ def main():
 
                 match = TRKRE.search(line)
                 if match:
-                    playlists[pls].append(tracks[match.group(1)])
+                    path = urllib.unquote(tracks[match.group(1)])
+                    playlists[pls].append(path)
                     continue
 
     # Write M3Us
